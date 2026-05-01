@@ -1,0 +1,33 @@
+name: Agent (stub)
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Feature title
+        required: true
+        type: string
+      description:
+        description: Feature description
+        required: true
+        type: string
+
+# Serialize agent runs: only one agent works at a time, so each run starts
+# from a main that includes any predecessors that have already merged.
+concurrency:
+  group: agent-runs
+  cancel-in-progress: false
+
+# Minimum permissions for now. Expand to `contents: write` and
+# `pull-requests: write` when the real coding-agent body lands.
+permissions:
+  contents: read
+
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show inputs
+        run: |
+          echo "title: ${{ inputs.title }}"
+          echo "description: ${{ inputs.description }}"

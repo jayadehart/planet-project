@@ -31,3 +31,9 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     references: [chatSessions.id],
   }),
 }));
+
+export const systemState = pgTable('system_state', {
+  id: text('id').primaryKey(),
+  lastExtractionAt: timestamp('last_extraction_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
