@@ -70,6 +70,7 @@ jobs:
           DATABASE_URL: postgres://x:x@x.neon.tech/x?sslmode=require
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
           claude_args: |
             --max-turns 60
             --model claude-sonnet-4-5
@@ -90,18 +91,32 @@ jobs:
             2. Make a small, focused change. Do not refactor unrelated code.
             3. Add Vitest tests colocated as `*.test.ts` next to the file under
                test. Cover the happy path and at least one edge case.
-            4. Run all of these locally before finishing — every one must pass.
-               `DATABASE_URL` is already exported in your env.
+            4. Before committing — and AFTER your final edit to any file — run
+               all four checks below from the repo root. Every one must pass on
+               the exact tree you are about to commit. If you edit anything
+               afterward (even a test file), re-run them. `DATABASE_URL` is
+               already exported in your env.
                - `pnpm lint`
                - `pnpm test`
                - `pnpm exec tsc --noEmit`
                - `pnpm build`
+               Do not claim a check passed without actually invoking it in this
+               session. Do not suppress lint rules (no `eslint-disable`, no
+               `any` to dodge type errors) — fix the underlying issue instead.
             5. Commit your work on the current branch (already created for you:
                `${{ steps.branch.outputs.branch }}`). Use a clear commit message.
             6. Do not push or open a PR — the workflow will do that after you exit.
 
             If you cannot make all four checks pass, leave the working tree dirty
             and exit. The workflow will fail loudly rather than open a broken PR.
+
+      - name: Upload Claude transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-transcript-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          if-no-files-found: ignore
 
       - name: Verify checks pass
         env:
