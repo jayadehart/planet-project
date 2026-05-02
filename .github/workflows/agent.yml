@@ -1,4 +1,4 @@
-name: Agent (stub)
+name: Agent
 
 on:
   workflow_dispatch:
@@ -18,16 +18,127 @@ concurrency:
   group: agent-runs
   cancel-in-progress: false
 
-# Minimum permissions for now. Expand to `contents: write` and
-# `pull-requests: write` when the real coding-agent body lands.
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  echo:
+  implement:
     runs-on: ubuntu-latest
     steps:
-      - name: Show inputs
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure git identity
         run: |
-          echo "title: ${{ inputs.title }}"
-          echo "description: ${{ inputs.description }}"
+          git config user.name "agent[bot]"
+          git config user.email "agent[bot]@users.noreply.github.com"
+
+      - name: Create feature branch
+        id: branch
+        env:
+          TITLE: ${{ inputs.title }}
+        run: |
+          # kebab-case the title, drop non-alphanumerics, cap at 40 chars
+          SLUG=$(printf '%s' "$TITLE" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
+            | cut -c1-40 \
+            | sed -E 's/-+$//')
+          BRANCH="feat/${SLUG}-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Inherited by the spawned Claude Code process so it can run
+          # `pnpm build` without remembering to export this itself.
+          DATABASE_URL: postgres://x:x@x.neon.tech/x?sslmode=require
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --max-turns 60
+            --model claude-sonnet-4-5
+            --permission-mode acceptEdits
+            --allowedTools Read,Write,Edit,Bash,Glob,Grep,WebFetch,Task,TodoWrite
+          prompt: |
+            You are an autonomous coding agent implementing a feature in this repo.
+
+            ## Feature
+
+            **Title:** ${{ inputs.title }}
+
+            **Description:** ${{ inputs.description }}
+
+            ## Rules
+
+            1. Read `AGENTS.md` before writing any code. Heed it.
+            2. Make a small, focused change. Do not refactor unrelated code.
+            3. Add Vitest tests colocated as `*.test.ts` next to the file under
+               test. Cover the happy path and at least one edge case.
+            4. Run all of these locally before finishing — every one must pass.
+               `DATABASE_URL` is already exported in your env.
+               - `pnpm lint`
+               - `pnpm test`
+               - `pnpm exec tsc --noEmit`
+               - `pnpm build`
+            5. Commit your work on the current branch (already created for you:
+               `${{ steps.branch.outputs.branch }}`). Use a clear commit message.
+            6. Do not push or open a PR — the workflow will do that after you exit.
+
+            If you cannot make all four checks pass, leave the working tree dirty
+            and exit. The workflow will fail loudly rather than open a broken PR.
+
+      - name: Verify checks pass
+        env:
+          DATABASE_URL: postgres://x:x@x.neon.tech/x?sslmode=require
+        run: |
+          pnpm lint
+          pnpm test
+          pnpm exec tsc --noEmit
+          pnpm build
+
+      - name: Push branch
+        run: git push -u origin "${{ steps.branch.outputs.branch }}"
+
+      - name: Open PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: ${{ inputs.title }}
+          DESCRIPTION: ${{ inputs.description }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: |
+          BODY=$(cat <<EOF
+          ## Feature
+
+          $DESCRIPTION
+
+          ---
+
+          Opened automatically by the agent workflow.
+
+          <!-- agent-run: ${{ github.run_id }} -->
+          EOF
+          )
+          URL=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$BODY")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Enable auto-merge
+        if: vars.AUTO_MERGE == 'TRUE'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "${{ steps.pr.outputs.url }}" --auto --squash --delete-branch

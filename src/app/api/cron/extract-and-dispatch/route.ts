@@ -71,8 +71,18 @@ async function handle(req: Request): Promise<Response> {
 
   const features = await extractFeatures([...byChat.values()]);
 
+  let dispatched = 0;
+  const failures: Array<{ title: string; error: string }> = [];
   for (const f of features) {
-    await dispatchAgentRun(f);
+    try {
+      await dispatchAgentRun(f);
+      dispatched++;
+    } catch (e) {
+      failures.push({
+        title: f.title,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   await db
@@ -84,7 +94,9 @@ async function handle(req: Request): Promise<Response> {
     messagesSeen: rows.length,
     chats: byChat.size,
     featuresExtracted: features.length,
-    dispatched: features.length,
+    dispatched,
+    failed: failures.length,
+    failures,
     watermark: maxCreatedAt.toISOString(),
   });
 }
