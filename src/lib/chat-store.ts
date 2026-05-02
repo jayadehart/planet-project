@@ -67,3 +67,19 @@ export async function saveChat({
     .set({ updatedAt: new Date() })
     .where(eq(chatSessions.id, chatId));
 }
+
+export interface ChatSession {
+  id: string;
+  title: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getAllChats(): Promise<ChatSession[]> {
+  const rows = await db
+    .select()
+    .from(chatSessions)
+    .orderBy(sql`${chatSessions.updatedAt} desc`);
+
+  return rows;
+}
