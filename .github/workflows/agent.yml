@@ -113,7 +113,9 @@ jobs:
           pnpm build
 
       - name: Push branch
-        run: git push -u origin "${{ steps.branch.outputs.branch }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "${{ steps.branch.outputs.branch }}"
 
       - name: Open PR
         id: pr
