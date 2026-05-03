@@ -6,10 +6,12 @@ import {
 } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { saveChat } from '@/lib/chat-store';
+import { calculator } from '@/lib/tools/calculator';
 
 const agent = new ToolLoopAgent({
   model: anthropic('claude-sonnet-4-5'),
   instructions: 'You are a helpful assistant.',
+  tools: { calculator },
 });
 
 type ChatUIMessage = InferAgentUIMessage<typeof agent>;
