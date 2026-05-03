@@ -32,8 +32,3 @@ jobs:
 
       - name: Build
         run: pnpm build
-        env:
-          # Placeholder — db/index.ts constructs the Neon client at module load.
-          # The real connection isn't used during `next build`; we just need the
-          # env var to exist so the module doesn't throw.
-          DATABASE_URL: postgres://x:x@x.neon.tech/x?sslmode=require

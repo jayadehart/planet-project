@@ -1,5 +1,5 @@
 import { gt, eq, asc } from 'drizzle-orm';
-import { db } from '@/db';
+import { getDb } from '@/db';
 import { messages as messagesTable, systemState } from '@/db/schema';
 import { extractFeatures, type ChatTranscript } from '@/lib/feature-extraction';
 import { dispatchAgentRun } from '@/lib/github-dispatch';
@@ -11,6 +11,7 @@ function unauthorized() {
 }
 
 async function getOrCreateWatermark(): Promise<Date> {
+  const db = getDb();
   const [existing] = await db
     .select()
     .from(systemState)
@@ -40,6 +41,7 @@ async function handle(req: Request): Promise<Response> {
   if (auth !== `Bearer ${expected}`) return unauthorized();
 
   const watermark = await getOrCreateWatermark();
+  const db = getDb();
 
   const rows = await db
     .select({
@@ -85,10 +87,13 @@ async function handle(req: Request): Promise<Response> {
     }
   }
 
-  await db
-    .update(systemState)
-    .set({ lastExtractionAt: maxCreatedAt, updatedAt: new Date() })
-    .where(eq(systemState.id, SINGLETON_ID));
+  const watermarkAdvanced = failures.length === 0;
+  if (watermarkAdvanced) {
+    await db
+      .update(systemState)
+      .set({ lastExtractionAt: maxCreatedAt, updatedAt: new Date() })
+      .where(eq(systemState.id, SINGLETON_ID));
+  }
 
   return Response.json({
     messagesSeen: rows.length,
@@ -97,7 +102,8 @@ async function handle(req: Request): Promise<Response> {
     dispatched,
     failed: failures.length,
     failures,
-    watermark: maxCreatedAt.toISOString(),
+    watermark: (watermarkAdvanced ? maxCreatedAt : watermark).toISOString(),
+    watermarkAdvanced,
   });
 }
 

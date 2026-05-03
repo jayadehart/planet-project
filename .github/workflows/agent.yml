@@ -64,10 +64,6 @@ jobs:
 
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
-        env:
-          # Inherited by the spawned Claude Code process so it can run
-          # `pnpm build` without remembering to export this itself.
-          DATABASE_URL: postgres://x:x@x.neon.tech/x?sslmode=require
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
@@ -94,8 +90,7 @@ jobs:
             4. Before committing — and AFTER your final edit to any file — run
                all four checks below from the repo root. Every one must pass on
                the exact tree you are about to commit. If you edit anything
-               afterward (even a test file), re-run them. `DATABASE_URL` is
-               already exported in your env.
+               afterward (even a test file), re-run them.
                - `pnpm lint`
                - `pnpm test`
                - `pnpm exec tsc --noEmit`
@@ -119,8 +114,6 @@ jobs:
           if-no-files-found: ignore
 
       - name: Verify checks pass
-        env:
-          DATABASE_URL: postgres://x:x@x.neon.tech/x?sslmode=require
         run: |
           pnpm lint
           pnpm test

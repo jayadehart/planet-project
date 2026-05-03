@@ -1,16 +1,16 @@
 import { generateId, type UIMessage } from 'ai';
 import { eq, asc, sql } from 'drizzle-orm';
-import { db } from '@/db';
+import { getDb } from '@/db';
 import { chatSessions, messages as messagesTable } from '@/db/schema';
 
 export async function createChat(): Promise<string> {
   const id = generateId();
-  await db.insert(chatSessions).values({ id });
+  await getDb().insert(chatSessions).values({ id });
   return id;
 }
 
 export async function chatExists(id: string): Promise<boolean> {
-  const [row] = await db
+  const [row] = await getDb()
     .select({ id: chatSessions.id })
     .from(chatSessions)
     .where(eq(chatSessions.id, id))
@@ -19,7 +19,7 @@ export async function chatExists(id: string): Promise<boolean> {
 }
 
 export async function loadChat(id: string): Promise<UIMessage[]> {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(messagesTable)
     .where(eq(messagesTable.chatSessionId, id))
@@ -41,6 +41,8 @@ export async function saveChat({
   messages: UIMessage[];
 }): Promise<void> {
   if (messages.length === 0) return;
+
+  const db = getDb();
 
   await db
     .insert(messagesTable)
