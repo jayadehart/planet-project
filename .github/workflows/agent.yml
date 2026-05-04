@@ -83,7 +83,9 @@ jobs:
 
             ## Rules
 
-            1. Read `AGENTS.md` before writing any code. Heed it.
+            1. Read `AGENTS.md` and `GOAL.md` before writing any code. The
+               feature exists to move the app closer to the goal — keep that
+               framing in mind when making design choices.
             2. Make a small, focused change. Do not refactor unrelated code.
             3. Add Vitest tests colocated as `*.test.ts` next to the file under
                test. Cover the happy path and at least one edge case.

@@ -1,10 +1,16 @@
-import { gt, eq, asc } from 'drizzle-orm';
+import { gt, eq, asc, inArray } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { messages as messagesTable, systemState } from '@/db/schema';
-import { extractFeatures, type ChatTranscript } from '@/lib/feature-extraction';
+import { messages as messagesTable, systemState, sessionEvaluations } from '@/db/schema';
+import {
+  extractFeatures,
+  type ChatTranscript,
+  type EvaluatedTranscript,
+} from '@/lib/feature-extraction';
 import { dispatchAgentRun } from '@/lib/github-dispatch';
+import { judgeSession, loadGoal } from '@/lib/session-evaluation';
 
 const SINGLETON_ID = 'global';
+const LOW_SCORE_THRESHOLD = 3;
 
 function unauthorized() {
   return new Response('Unauthorized', { status: 401 });
@@ -43,35 +49,77 @@ async function handle(req: Request): Promise<Response> {
   const watermark = await getOrCreateWatermark();
   const db = getDb();
 
-  const rows = await db
+  const newMessages = await db
     .select({
-      id: messagesTable.id,
       chatSessionId: messagesTable.chatSessionId,
-      role: messagesTable.role,
-      parts: messagesTable.parts,
       createdAt: messagesTable.createdAt,
     })
     .from(messagesTable)
     .where(gt(messagesTable.createdAt, watermark))
     .orderBy(asc(messagesTable.chatSessionId), asc(messagesTable.orderIndex));
 
-  if (rows.length === 0) {
-    return Response.json({ messagesSeen: 0, featuresExtracted: 0, dispatched: 0 });
+  if (newMessages.length === 0) {
+    return Response.json({ messagesSeen: 0, sessionsJudged: 0, featuresExtracted: 0, dispatched: 0 });
   }
 
-  const byChat = new Map<string, ChatTranscript>();
   let maxCreatedAt: Date = watermark;
-  for (const r of rows) {
+  const affectedSessionIds = new Set<string>();
+  for (const r of newMessages) {
     if (r.createdAt > maxCreatedAt) maxCreatedAt = r.createdAt;
-    let t = byChat.get(r.chatSessionId);
+    affectedSessionIds.add(r.chatSessionId);
+  }
+
+  const fullRows = await db
+    .select({
+      id: messagesTable.id,
+      chatSessionId: messagesTable.chatSessionId,
+      role: messagesTable.role,
+      parts: messagesTable.parts,
+    })
+    .from(messagesTable)
+    .where(inArray(messagesTable.chatSessionId, [...affectedSessionIds]))
+    .orderBy(asc(messagesTable.chatSessionId), asc(messagesTable.orderIndex));
+
+  const transcripts = new Map<string, ChatTranscript>();
+  for (const r of fullRows) {
+    let t = transcripts.get(r.chatSessionId);
     if (!t) {
       t = { chatSessionId: r.chatSessionId, messages: [] };
-      byChat.set(r.chatSessionId, t);
+      transcripts.set(r.chatSessionId, t);
     }
     t.messages.push({ id: r.id, role: r.role, parts: r.parts });
   }
 
-  const features = await extractFeatures([...byChat.values()]);
+  const goalText = await loadGoal();
+
+  const evaluated: EvaluatedTranscript[] = [];
+  for (const transcript of transcripts.values()) {
+    const evaluation = await judgeSession({ transcript, goalText });
+    await db
+      .insert(sessionEvaluations)
+      .values({
+        chatSessionId: transcript.chatSessionId,
+        goalMet: evaluation.goalMet,
+        capabilityGap: evaluation.capabilityGap,
+        friction: evaluation.friction,
+        notes: evaluation.notes,
+        evaluatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: sessionEvaluations.chatSessionId,
+        set: {
+          goalMet: evaluation.goalMet,
+          capabilityGap: evaluation.capabilityGap,
+          friction: evaluation.friction,
+          notes: evaluation.notes,
+          evaluatedAt: new Date(),
+        },
+      });
+    evaluated.push({ ...transcript, evaluation });
+  }
+
+  const lowScoring = evaluated.filter((e) => e.evaluation.goalMet <= LOW_SCORE_THRESHOLD);
+  const features = await extractFeatures(lowScoring);
 
   let dispatched = 0;
   const failures: Array<{ title: string; error: string }> = [];
@@ -96,8 +144,9 @@ async function handle(req: Request): Promise<Response> {
   }
 
   return Response.json({
-    messagesSeen: rows.length,
-    chats: byChat.size,
+    messagesSeen: newMessages.length,
+    sessionsJudged: evaluated.length,
+    lowScoringSessions: lowScoring.length,
     featuresExtracted: features.length,
     dispatched,
     failed: failures.length,

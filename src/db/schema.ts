@@ -37,3 +37,14 @@ export const systemState = pgTable('system_state', {
   lastExtractionAt: timestamp('last_extraction_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+export const sessionEvaluations = pgTable('session_evaluations', {
+  chatSessionId: text('chat_session_id')
+    .primaryKey()
+    .references(() => chatSessions.id, { onDelete: 'cascade' }),
+  goalMet: integer('goal_met').notNull(),
+  capabilityGap: text('capability_gap'),
+  friction: text('friction'),
+  notes: text('notes'),
+  evaluatedAt: timestamp('evaluated_at').notNull().defaultNow(),
+});

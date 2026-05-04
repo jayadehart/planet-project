@@ -2,17 +2,18 @@ import { generateText, Output } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import type { UIMessage } from 'ai';
+import type { SessionEvaluation } from './session-evaluation';
 
 export const featureSchema = z.object({
   title: z
     .string()
     .min(4)
     .max(80)
-    .describe('Short imperative title, e.g. "Add timestamps to chat list"'),
+    .describe('Short imperative title, e.g. "Show real-time flight prices"'),
   description: z
     .string()
     .min(20)
-    .describe('What the feature is and how it should behave from the user perspective'),
+    .describe('What the feature is and how it should behave from the user perspective. Reference the failure mode it addresses.'),
 });
 
 export const featureListSchema = z.object({
@@ -30,28 +31,40 @@ export type ChatTranscript = {
   }>;
 };
 
-const SYSTEM_PROMPT = `You are reviewing chat logs between users and an AI assistant in order to identify discrete feature requests or implied features based on user questions.
+export type EvaluatedTranscript = ChatTranscript & {
+  evaluation: SessionEvaluation;
+};
 
-Example:
-  User: "How can I go back to old chats?"
-  Feature: "Persisted chat logs, chat session navigation"
+const SYSTEM_PROMPT = `You are reviewing low-scoring chat sessions from a trip-planning assistant. Each session comes with a judge's evaluation: a score against the app's goal, plus tags for capability gaps and friction.
+
+Your job is to propose small, concrete features that would close those gaps. Drive features from the failure modes — not from raw user questions.
 
 Rules:
 - Each feature must be small and concrete enough that a coding agent could ship it in a single PR.
-- If no genuine feature requests are present, return an empty list.`;
+- Each feature must reference the failure mode (capability gap or friction tag) it addresses.
+- Prefer features that would help across multiple sessions (recurring tags) over one-off ideas.
+- If the failure modes are too vague to act on, return an empty list.`;
 
-function renderTranscript(t: ChatTranscript): string {
+function renderTranscript(t: EvaluatedTranscript): string {
   const lines = t.messages.map((m) => {
     const text = (m.parts ?? [])
       .map((p) => (p.type === 'text' ? p.text : `[${p.type}]`))
       .join('');
     return `[msg:${m.id}] ${m.role}: ${text}`;
   });
-  return `### chat ${t.chatSessionId}\n${lines.join('\n')}`;
+  return [
+    `### chat ${t.chatSessionId}`,
+    `score: ${t.evaluation.goalMet}/5`,
+    `capability gap: ${t.evaluation.capabilityGap ?? 'none'}`,
+    `friction: ${t.evaluation.friction ?? 'none'}`,
+    `judge notes: ${t.evaluation.notes}`,
+    '',
+    lines.join('\n'),
+  ].join('\n');
 }
 
 export async function extractFeatures(
-  transcripts: ChatTranscript[],
+  transcripts: EvaluatedTranscript[],
 ): Promise<ExtractedFeature[]> {
   if (transcripts.length === 0) return [];
 
