@@ -4,12 +4,15 @@ import {
   ToolLoopAgent,
   createAgentUIStreamResponse,
   createIdGenerator,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   type InferAgentUIMessage,
 } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { saveChat } from '@/lib/chat-store';
 import { calculator } from '@/lib/tools/calculator';
 import { weather } from '@/lib/tools/weather';
+import { buildOffTopicResponse, detectOffTopicCategory } from '@/lib/off-topic';
 
 const goalText = readFileSync(path.join(process.cwd(), 'GOAL.md'), 'utf8');
 
@@ -25,17 +28,54 @@ const agent = new ToolLoopAgent({
 
 type ChatUIMessage = InferAgentUIMessage<typeof agent>;
 
+const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
+
+function lastUserText(messages: ChatUIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role === 'user') {
+      return m.parts
+        .map((p) => (p.type === 'text' ? p.text : ''))
+        .join('');
+    }
+  }
+  return '';
+}
+
 export async function POST(req: Request) {
   const { messages, chatId } = (await req.json()) as {
     messages: ChatUIMessage[];
     chatId: string;
   };
 
+  const offTopic = detectOffTopicCategory(lastUserText(messages));
+  if (offTopic) {
+    const text = buildOffTopicResponse(offTopic);
+    const stream = createUIMessageStream<ChatUIMessage>({
+      originalMessages: messages,
+      generateId: generateMessageId,
+      execute: ({ writer }) => {
+        const id = 'text-1';
+        writer.write({ type: 'start' });
+        writer.write({ type: 'start-step' });
+        writer.write({ type: 'text-start', id });
+        writer.write({ type: 'text-delta', id, delta: text });
+        writer.write({ type: 'text-end', id });
+        writer.write({ type: 'finish-step' });
+        writer.write({ type: 'finish' });
+      },
+      onFinish: async ({ messages: updated }) => {
+        await saveChat({ chatId, messages: updated });
+      },
+    });
+    return createUIMessageStreamResponse({ stream });
+  }
+
   return createAgentUIStreamResponse({
     agent,
     uiMessages: messages,
     originalMessages: messages,
-    generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+    generateMessageId,
     onFinish: async ({ messages: updated }) => {
       await saveChat({ chatId, messages: updated });
     },
