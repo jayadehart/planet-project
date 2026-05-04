@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useState } from "react";
 import { CapabilityBanner } from "./capability-banner";
+import { Greeting } from "./greeting";
 
 export function Chat({
   id,
@@ -37,6 +38,7 @@ export function Chat({
       </header>
       <main className="flex flex-1 w-full max-w-3xl flex-col py-10 px-8">
         <div className="flex-1 flex flex-col gap-3 mb-24">
+          {messages.length === 0 && <Greeting />}
           {messages.map((m) => {
             const isUser = m.role === "user";
             return (
