@@ -17,14 +17,14 @@ export const evaluationSchema = z.object({
     .max(200)
     .nullable()
     .describe(
-      'Short tag describing a capability the assistant lacked, if any. Null if no gap. Example: "no flight prices", "cannot save itinerary".',
+      'Short tag describing something the product was missing — a capability, surface, persisted entity, integration, or UI primitive. Null if nothing was missing. Examples: "no flight prices" (missing tool/integration), "no place to view past trips" (missing surface), "did not remember dietary prefs across sessions" (missing persistence), "no map view for suggested places" (missing primitive). Tag what the product needed, not what the assistant should have said.',
     ),
   friction: z
     .string()
     .max(200)
     .nullable()
     .describe(
-      'Short tag describing user friction, if any. Null if smooth. Example: "too many clarifying questions", "had to repeat dates".',
+      'Short tag describing in-flow friction, if any. Null if smooth. Can be conversational ("too many clarifying questions", "had to repeat dates") or product-shaped ("had to copy plan to notes app", "no way to share itinerary").',
     ),
   notes: z
     .string()
@@ -34,13 +34,15 @@ export const evaluationSchema = z.object({
 
 export type SessionEvaluation = z.infer<typeof evaluationSchema>;
 
-const SYSTEM_PROMPT = `You are evaluating a single chat session between a user and a trip-planning assistant against a stated goal.
+const SYSTEM_PROMPT = `You are evaluating a single chat session between a user and a trip-planning product against a stated goal.
 
 You will be given:
-- The goal of the application.
+- The goal of the product.
 - A full chat transcript.
 
-Score how well the assistant met the goal in this session, and tag any failure modes that appeared. Be honest — low scores and concrete failure tags are how the system improves.`;
+Score how well the product served the user in this session, and tag any failure modes that appeared. Be honest — low scores and concrete failure tags are how the system improves.
+
+The product is more than its chat surface. When you tag a capability gap, prefer product-shaped framings (missing tool, missing page, missing persistence, missing integration, missing UI primitive) over framings that imply the only fix is the assistant saying something different. If a user wanted to save an itinerary, view past trips, see real flight prices, or use a feature that doesn't exist yet, that's a product gap to tag — not a conversational shortcoming.`;
 
 function renderTranscript(t: ChatTranscript): string {
   const lines = t.messages.map((m) => {

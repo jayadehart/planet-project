@@ -84,9 +84,14 @@ jobs:
             ## Rules
 
             1. Read `AGENTS.md` and `GOAL.md` before writing any code. The
-               feature exists to move the app closer to the goal — keep that
-               framing in mind when making design choices.
-            2. Make a small, focused change. Do not refactor unrelated code.
+               feature exists to move the product closer to the goal — keep
+               that framing in mind when making design choices.
+            2. Build the feature properly. New routes, new components, new
+               schema migrations, new dependencies, new server endpoints, and
+               new third-party integrations are all fair game when the feature
+               calls for them. The only things to
+               avoid are unrelated refactors and changes outside the feature's
+               scope.
             3. Add Vitest tests colocated as `*.test.ts` next to the file under
                test. Cover the happy path and at least one edge case.
             4. Before committing — and AFTER your final edit to any file — run

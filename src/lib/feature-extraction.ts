@@ -9,11 +9,11 @@ export const featureSchema = z.object({
     .string()
     .min(4)
     .max(80)
-    .describe('Short imperative title, e.g. "Show real-time flight prices"'),
+    .describe('Short imperative title naming the thing being built, e.g. "Add saved-trips sidebar at /trips" or "Add flight-price tool using Duffel API".'),
   description: z
     .string()
     .min(20)
-    .describe('What the feature is and how it should behave from the user perspective. Reference the failure mode it addresses.'),
+    .describe('What the feature is, what surfaces/data/tools it adds (routes, tables, components, APIs), and the underlying user need it resolves. Describe the product change, not just the user-visible behavior.'),
 });
 
 export const featureListSchema = z.object({
@@ -35,15 +35,31 @@ export type EvaluatedTranscript = ChatTranscript & {
   evaluation: SessionEvaluation;
 };
 
-const SYSTEM_PROMPT = `You are reviewing low-scoring chat sessions from a trip-planning assistant. Each session comes with a judge's evaluation: a score against the app's goal, plus tags for capability gaps and friction.
+const SYSTEM_PROMPT = `You are reviewing low-scoring chat sessions from a trip-planning product. Each session comes with a judge's evaluation: a score against the product's goal, plus tags for capability gaps and friction.
 
-Your job is to propose small, concrete features that would close those gaps. Drive features from the failure modes — not from raw user questions.
+Your job is to propose substantive features that would resolve the underlying user need — not patch over it with a better-worded reply. The product is more than its chat surface; you are deciding what to build next across the whole product (chat, pages, schema, tools, integrations).
 
-Rules:
-- Each feature must be small and concrete enough that a coding agent could ship it in a single PR.
-- Each feature must reference the failure mode (capability gap or friction tag) it addresses.
-- Prefer features that would help across multiple sessions (recurring tags) over one-off ideas.
-- If the failure modes are too vague to act on, return an empty list.`;
+What "good" looks like:
+
+- Feature that ships a real capability the product is missing — a new tool the assistant can call, a new page, a new persisted entity, a new integration, a new UI primitive.
+- Sized so a single coding agent can complete it autonomously, but ambitious within that envelope. New routes, new components, new schema migrations, new dependencies, and new third-party APIs are all in scope. Do not default to the smallest possible interpretation. A 30-line text tweak is almost never the right answer when the gap is product-shaped.
+- Resolves the user's underlying need, not the literal wording of the failure tag. If the tag is "no chat history", the right feature is probably "build a sidebar listing past trips with a /trips route and a chat_session.title field" — not "mention chat history in the greeting".
+- Helps across multiple sessions (recurring tags) rather than fixing a one-off.
+
+Examples of the shape we want:
+
+- "Add a saved-trips sidebar at /trips backed by a trips table, with controls to rename and delete past sessions" (addresses: missing surface for past trips).
+- "Add a flight-price tool the assistant can call, using the Duffel or Amadeus API behind a server-side wrapper" (addresses: missing capability — flight prices).
+- "Add a profile page where users can store travel preferences (pace, budget, dietary needs) and inject them into the system prompt" (addresses: missing persistence across sessions).
+- "Add an in-chat itinerary artifact with a day-by-day editable component, persisted as structured JSON on the message" (addresses: high friction copying plans elsewhere).
+
+Examples of the shape we do NOT want:
+
+- "Update the greeting to mention that chat history exists" (papers over the gap instead of building it).
+- "Add a help page explaining what the assistant can do" (meta-explainer rather than a real capability).
+- "Improve the system prompt to ask fewer clarifying questions" (prompt tweak, not a product change — only propose this if there is genuinely no product-shaped fix).
+
+Return an empty list if the failure modes are too vague to act on, or if the only honest fix is a prompt tweak that you've already proposed in a prior batch.`;
 
 function renderTranscript(t: EvaluatedTranscript): string {
   const lines = t.messages.map((m) => {
