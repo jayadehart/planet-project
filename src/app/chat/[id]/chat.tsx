@@ -4,6 +4,10 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useState } from "react";
 import { CapabilityBanner } from "./capability-banner";
+import {
+  TRIP_COMPARISON_TEMPLATE,
+  detectsTripComparison,
+} from "@/lib/comparison-template";
 
 export function Chat({
   id,
@@ -62,22 +66,44 @@ export function Chat({
           })}
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!input.trim()) return;
-            sendMessage({ text: input });
-            setInput("");
-          }}
-          className="fixed bottom-8 left-0 right-0 flex justify-center px-8"
-        >
-          <input
-            className="w-full max-w-3xl p-3 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-sm bg-white dark:bg-zinc-900"
-            value={input}
-            placeholder="Where do you want to go?"
-            onChange={(e) => setInput(e.target.value)}
-          />
-        </form>
+        <div className="fixed bottom-8 left-0 right-0 flex flex-col items-center gap-2 px-8">
+          {detectsTripComparison(input) &&
+            input.trim() !== TRIP_COMPARISON_TEMPLATE.trim() && (
+              <button
+                type="button"
+                onClick={() => setInput(TRIP_COMPARISON_TEMPLATE)}
+                className="w-full max-w-3xl text-left text-sm rounded-lg border border-blue-200 bg-blue-50 text-blue-900 px-3 py-2 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
+              >
+                Comparing trips? Insert a side-by-side template
+                (destination/dates/budget for Trip A vs Trip B).
+              </button>
+            )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!input.trim()) return;
+              sendMessage({ text: input });
+              setInput("");
+            }}
+            className="w-full flex justify-center"
+          >
+            <textarea
+              className="w-full max-w-3xl p-3 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-sm bg-white dark:bg-zinc-900 resize-none"
+              value={input}
+              rows={Math.min(Math.max(input.split("\n").length, 1), 12)}
+              placeholder="Where do you want to go?"
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!input.trim()) return;
+                  sendMessage({ text: input });
+                  setInput("");
+                }
+              }}
+            />
+          </form>
+        </div>
       </main>
     </div>
   );
