@@ -2,10 +2,23 @@ import { generateId, type UIMessage } from 'ai';
 import { eq, asc, sql } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { chatSessions, messages as messagesTable } from '@/db/schema';
+import { createWelcomeMessage } from './welcome-message';
 
 export async function createChat(): Promise<string> {
   const id = generateId();
-  await getDb().insert(chatSessions).values({ id });
+  const db = getDb();
+  await db.insert(chatSessions).values({ id });
+
+  const welcome = createWelcomeMessage();
+  await db.insert(messagesTable).values({
+    id: welcome.id,
+    chatSessionId: id,
+    role: welcome.role,
+    parts: welcome.parts,
+    metadata: welcome.metadata ?? null,
+    orderIndex: 0,
+  });
+
   return id;
 }
 
