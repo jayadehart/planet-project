@@ -12,12 +12,6 @@ on:
         required: true
         type: string
 
-# Serialize agent runs: only one agent works at a time, so each run starts
-# from a main that includes any predecessors that have already merged.
-concurrency:
-  group: agent-runs
-  cancel-in-progress: false
-
 permissions:
   contents: write
   pull-requests: write
@@ -27,6 +21,12 @@ jobs:
   implement:
     runs-on: ubuntu-latest
     steps:
+
+      - name: Wait for prior agent runs
+        uses: ahmadnassri/action-workflow-queue@v1
+        with:
+          timeout: 7200000
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -69,7 +69,7 @@ jobs:
           show_full_output: true
           claude_args: |
             --max-turns 60
-            --model claude-sonnet-4-5
+            --model claude-opus-4-7
             --permission-mode acceptEdits
             --allowedTools Read,Write,Edit,Bash,Glob,Grep,WebFetch,Task,TodoWrite
           prompt: |
