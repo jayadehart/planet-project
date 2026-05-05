@@ -94,7 +94,17 @@ jobs:
                scope.
             3. Add Vitest tests colocated as `*.test.ts` next to the file under
                test. Cover the happy path and at least one edge case.
-            4. Before committing — and AFTER your final edit to any file — run
+            4. If you change `src/db/schema.ts`, you MUST run `pnpm db:generate`
+               afterward and commit the resulting files under `drizzle/`
+               (both the new `*.sql` file and the updated `meta/_journal.json`
+               and `meta/*_snapshot.json`). The migration is what actually
+               changes the production database — without it, the schema diff
+               only exists in TypeScript and the deployed app will crash.
+               You do not need a database connection to run `db:generate`; it
+               diffs the schema against the existing migration journal and
+               writes new SQL. Do NOT run `pnpm db:push` or `pnpm db:migrate`
+               from this workflow — those touch a real database.
+            5. Before committing — and AFTER your final edit to any file — run
                all four checks below from the repo root. Every one must pass on
                the exact tree you are about to commit. If you edit anything
                afterward (even a test file), re-run them.
@@ -105,9 +115,9 @@ jobs:
                Do not claim a check passed without actually invoking it in this
                session. Do not suppress lint rules (no `eslint-disable`, no
                `any` to dodge type errors) — fix the underlying issue instead.
-            5. Commit your work on the current branch (already created for you:
+            6. Commit your work on the current branch (already created for you:
                `${{ steps.branch.outputs.branch }}`). Use a clear commit message.
-            6. Do not push or open a PR — the workflow will do that after you exit.
+            7. Do not push or open a PR — the workflow will do that after you exit.
 
             If you cannot make all four checks pass, leave the working tree dirty
             and exit. The workflow will fail loudly rather than open a broken PR.
@@ -129,13 +139,13 @@ jobs:
 
       - name: Push branch
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
         run: git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "${{ steps.branch.outputs.branch }}"
 
       - name: Open PR
         id: pr
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
           TITLE: ${{ inputs.title }}
           DESCRIPTION: ${{ inputs.description }}
           BRANCH: ${{ steps.branch.outputs.branch }}
@@ -158,5 +168,5 @@ jobs:
       - name: Enable auto-merge
         if: vars.AUTO_MERGE == 'TRUE'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
         run: gh pr merge "${{ steps.pr.outputs.url }}" --auto --squash --delete-branch

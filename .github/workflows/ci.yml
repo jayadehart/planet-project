@@ -32,3 +32,16 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Verify migrations match schema
+        env:
+          # drizzle-kit generate diffs the schema against drizzle/meta/_journal.json
+          # — it does not connect. The dummy URL only satisfies the config's
+          # non-null assertion.
+          DATABASE_URL: postgres://fake:fake@localhost:5432/fake
+        run: |
+          pnpm db:generate
+          if ! git diff --exit-code drizzle/; then
+            echo "::error::Schema in src/db/schema.ts is out of sync with drizzle/. Run 'pnpm db:generate' locally and commit the result."
+            exit 1
+          fi

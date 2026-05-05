@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777656704455,
-      "tag": "0000_amused_lifeguard",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1777662430347,
-      "tag": "0001_third_zodiak",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1778947200000,
-      "tag": "0002_add_trips",
+      "when": 1778005652606,
+      "tag": "0000_cheerful_thing",
       "breakpoints": true
     }
   ]
