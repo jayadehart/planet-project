@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useState } from "react";
 import { CapabilityBanner } from "./capability-banner";
+import { NewChatButton } from "./new-chat-button";
 
 export function Chat({
   id,
@@ -28,11 +29,14 @@ export function Chat({
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
       <header className="w-full border-b border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/70 backdrop-blur sticky top-0 z-10">
         <CapabilityBanner />
-        <div className="max-w-3xl mx-auto px-8 py-4 flex items-baseline gap-3">
+        <div className="max-w-3xl mx-auto px-8 py-4 flex items-center gap-3">
           <h1 className="text-lg font-semibold tracking-tight">Trip Planner</h1>
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
             concrete plans, not vibes
           </span>
+          <div className="ml-auto">
+            <NewChatButton />
+          </div>
         </div>
       </header>
       <main className="flex flex-1 w-full max-w-3xl flex-col py-10 px-8">
