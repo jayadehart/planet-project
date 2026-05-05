@@ -15,6 +15,13 @@
       "when": 1777662430347,
       "tag": "0001_third_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778947200000,
+      "tag": "0002_add_trips",
+      "breakpoints": true
     }
   ]
 }

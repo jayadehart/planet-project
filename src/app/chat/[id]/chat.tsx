@@ -33,6 +33,12 @@ export function Chat({
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
             concrete plans, not vibes
           </span>
+          <a
+            href="/trips"
+            className="ml-auto text-sm text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Saved trips
+          </a>
         </div>
       </header>
       <main className="flex flex-1 w-full max-w-3xl flex-col py-10 px-8">
