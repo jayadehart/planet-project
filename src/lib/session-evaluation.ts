@@ -28,7 +28,7 @@ export const evaluationSchema = z.object({
     ),
   notes: z
     .string()
-    .max(500)
+    .max(1000)
     .describe('One or two sentences justifying the score.'),
 });
 
