@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CapabilityBanner } from "./capability-banner";
 
 export function Chat({
@@ -13,6 +13,7 @@ export function Chat({
   initialMessages: UIMessage[];
 }) {
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const { messages, sendMessage } = useChat({
     id,
     messages: initialMessages,
@@ -23,6 +24,17 @@ export function Chat({
       }),
     }),
   });
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
@@ -78,6 +90,8 @@ export function Chat({
           className="fixed bottom-8 left-0 right-0 flex justify-center px-8"
         >
           <input
+            ref={inputRef}
+            aria-label="Message"
             className="w-full max-w-3xl p-3 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-sm bg-white dark:bg-zinc-900"
             value={input}
             placeholder="Where do you want to go?"
