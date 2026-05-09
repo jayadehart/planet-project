@@ -2,7 +2,8 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CapabilityBanner } from "./capability-banner";
 
 export function Chat({
@@ -12,8 +13,11 @@ export function Chat({
   id: string;
   initialMessages: UIMessage[];
 }) {
+  const router = useRouter();
   const [input, setInput] = useState("");
+  const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const creatingRef = useRef(false);
   const { messages, sendMessage } = useChat({
     id,
     messages: initialMessages,
@@ -25,16 +29,49 @@ export function Chat({
     }),
   });
 
+  const startNewChat = useCallback(async () => {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        console.error("Failed to create new chat", res.status);
+        return;
+      }
+      const body = (await res.json()) as { trip: { chatSessionId: string } };
+      router.push(`/chat/${body.trip.chatSessionId}`);
+    } catch (err) {
+      console.error("Failed to create new chat", err);
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
+    }
+  }, [router]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === "k") {
         e.preventDefault();
         inputRef.current?.focus();
+        return;
+      }
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "o"
+      ) {
+        e.preventDefault();
+        void startNewChat();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [startNewChat]);
 
   return (
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
@@ -45,9 +82,19 @@ export function Chat({
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
             concrete plans, not vibes
           </span>
+          <button
+            type="button"
+            onClick={() => void startNewChat()}
+            disabled={creating}
+            aria-label="New chat"
+            title="New chat (⌘⇧O)"
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1 text-sm font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-60"
+          >
+            {creating ? "Creating…" : "+ New chat"}
+          </button>
           <a
             href="/trips"
-            className="ml-auto text-sm text-blue-600 hover:underline dark:text-blue-400"
+            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
           >
             Saved trips
           </a>
