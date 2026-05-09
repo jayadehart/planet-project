@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  deriveTripTitle,
+  filterTripsByQuery,
   formatTripBudget,
   formatTripDateRange,
   tripCreateSchema,
@@ -82,5 +84,94 @@ describe('formatTripBudget', () => {
   it('formats cents as USD dollars with thousands separators', () => {
     expect(formatTripBudget(250000)).toBe('$2,500');
     expect(formatTripBudget(0)).toBe('$0');
+  });
+});
+
+describe('deriveTripTitle', () => {
+  it('returns the custom title when one has been set', () => {
+    expect(
+      deriveTripTitle({
+        title: 'Cherry blossom run',
+        destination: 'Tokyo',
+        startDate: null,
+        endDate: null,
+      }),
+    ).toBe('Cherry blossom run');
+  });
+
+  it('falls back to destination + dates when title is the default placeholder', () => {
+    expect(
+      deriveTripTitle({
+        title: 'Untitled trip',
+        destination: 'Lisbon, Portugal',
+        startDate: '2026-06-12',
+        endDate: '2026-06-15',
+      }),
+    ).toBe('Lisbon, Portugal (2026-06-12 → 2026-06-15)');
+  });
+
+  it('falls back to just the destination when no dates are set', () => {
+    expect(
+      deriveTripTitle({
+        title: 'Untitled trip',
+        destination: 'Lisbon, Portugal',
+        startDate: null,
+        endDate: null,
+      }),
+    ).toBe('Lisbon, Portugal');
+  });
+
+  it('keeps the default title when neither destination nor custom title exist', () => {
+    expect(
+      deriveTripTitle({
+        title: 'Untitled trip',
+        destination: null,
+        startDate: null,
+        endDate: null,
+      }),
+    ).toBe('Untitled trip');
+  });
+});
+
+describe('filterTripsByQuery', () => {
+  const trips = [
+    {
+      id: 't1',
+      title: 'Lisbon long weekend',
+      destination: 'Lisbon, Portugal',
+      status: 'planning',
+    },
+    {
+      id: 't2',
+      title: 'Kyoto autumn',
+      destination: 'Kyoto, Japan',
+      status: 'booked',
+    },
+    {
+      id: 't3',
+      title: 'Family ski trip',
+      destination: null,
+      status: 'planning',
+    },
+  ];
+
+  it('returns the full list when the query is empty or whitespace', () => {
+    expect(filterTripsByQuery(trips, '')).toEqual(trips);
+    expect(filterTripsByQuery(trips, '   ')).toEqual(trips);
+  });
+
+  it('matches case-insensitively against title, destination, and status', () => {
+    expect(filterTripsByQuery(trips, 'lisbon').map((t) => t.id)).toEqual(['t1']);
+    expect(filterTripsByQuery(trips, 'JAPAN').map((t) => t.id)).toEqual(['t2']);
+    expect(filterTripsByQuery(trips, 'booked').map((t) => t.id)).toEqual(['t2']);
+    expect(filterTripsByQuery(trips, 'ski').map((t) => t.id)).toEqual(['t3']);
+  });
+
+  it('returns an empty array when nothing matches', () => {
+    expect(filterTripsByQuery(trips, 'antarctica')).toEqual([]);
+  });
+
+  it('handles trips with a null destination without throwing', () => {
+    expect(filterTripsByQuery(trips, 'family').map((t) => t.id)).toEqual(['t3']);
   });
 });

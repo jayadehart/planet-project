@@ -120,3 +120,45 @@ export function formatTripBudget(budgetCents: number | null): string | null {
   const dollars = Math.round(budgetCents / 100);
   return `$${dollars.toLocaleString('en-US')}`;
 }
+
+export const DEFAULT_TRIP_TITLE = 'Untitled trip';
+
+export type TripTitleSource = {
+  title: string;
+  destination: string | null;
+  startDate: string | null;
+  endDate: string | null;
+};
+
+export function deriveTripTitle(trip: TripTitleSource): string {
+  const customTitle = trip.title?.trim();
+  if (customTitle && customTitle !== DEFAULT_TRIP_TITLE) return customTitle;
+  const destination = trip.destination?.trim();
+  if (destination) {
+    if (trip.startDate || trip.endDate) {
+      return `${destination} (${formatTripDateRange(trip.startDate, trip.endDate)})`;
+    }
+    return destination;
+  }
+  return customTitle || DEFAULT_TRIP_TITLE;
+}
+
+export type TripSearchable = {
+  title: string;
+  destination: string | null;
+  status: string;
+};
+
+export function filterTripsByQuery<T extends TripSearchable>(
+  trips: T[],
+  query: string,
+): T[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return trips;
+  return trips.filter((t) => {
+    if (t.title.toLowerCase().includes(q)) return true;
+    if ((t.destination ?? '').toLowerCase().includes(q)) return true;
+    if (t.status.toLowerCase().includes(q)) return true;
+    return false;
+  });
+}

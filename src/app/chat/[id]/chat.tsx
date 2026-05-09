@@ -37,7 +37,7 @@ export function Chat({
   }, []);
 
   return (
-    <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black min-w-0">
       <header className="w-full border-b border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/70 backdrop-blur sticky top-0 z-10">
         <CapabilityBanner />
         <div className="max-w-3xl mx-auto px-8 py-4 flex items-baseline gap-3">
@@ -45,12 +45,6 @@ export function Chat({
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
             concrete plans, not vibes
           </span>
-          <a
-            href="/trips"
-            className="ml-auto text-sm text-blue-600 hover:underline dark:text-blue-400"
-          >
-            Saved trips
-          </a>
         </div>
       </header>
       <main className="flex flex-1 w-full max-w-3xl flex-col py-10 px-8">

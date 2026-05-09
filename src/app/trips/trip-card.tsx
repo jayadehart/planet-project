@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  deriveTripTitle,
   formatTripBudget,
   formatTripDateRange,
   type Trip,
@@ -34,7 +35,7 @@ export function TripCard({
   const [busy, setBusy] = useState(false);
 
   const startRename = () => {
-    setTitleDraft(trip.title);
+    setTitleDraft(deriveTripTitle(trip));
     setRenaming(true);
   };
 
@@ -77,6 +78,7 @@ export function TripCard({
 
   const dateRange = formatTripDateRange(trip.startDate, trip.endDate);
   const budget = formatTripBudget(trip.budgetCents);
+  const displayTitle = deriveTripTitle(trip);
 
   return (
     <article
@@ -115,7 +117,7 @@ export function TripCard({
               />
             </form>
           ) : (
-            <h3 className="text-sm font-medium truncate">{trip.title}</h3>
+            <h3 className="text-sm font-medium truncate">{displayTitle}</h3>
           )}
           <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate">
             {trip.destination ?? "Destination TBD"}
