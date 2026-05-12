@@ -136,14 +136,26 @@ export function Chat({
           }}
           className="fixed bottom-8 left-0 right-0 flex justify-center px-8"
         >
-          <input
-            ref={inputRef}
-            aria-label="Message"
-            className="w-full max-w-3xl p-3 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-sm bg-white dark:bg-zinc-900"
-            value={input}
-            placeholder="Where do you want to go?"
-            onChange={(e) => setInput(e.target.value)}
-          />
+          <div className="w-full max-w-3xl flex items-stretch gap-2">
+            <button
+              type="button"
+              onClick={() => void startNewChat()}
+              disabled={creating}
+              aria-label="Start new chat"
+              title="Start new chat (⌘⇧O)"
+              className="shrink-0 inline-flex items-center justify-center rounded-lg border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-lg font-medium text-zinc-700 dark:text-zinc-200 shadow-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-60"
+            >
+              {creating ? "…" : "+"}
+            </button>
+            <input
+              ref={inputRef}
+              aria-label="Message"
+              className="flex-1 p-3 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-sm bg-white dark:bg-zinc-900"
+              value={input}
+              placeholder="Where do you want to go?"
+              onChange={(e) => setInput(e.target.value)}
+            />
+          </div>
         </form>
       </main>
     </div>

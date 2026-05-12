@@ -156,3 +156,59 @@ describe("Chat new-chat button", () => {
     errorSpy.mockRestore();
   });
 });
+
+describe("Chat input-bar new-chat button", () => {
+  it("creates a new chat when the input-bar button is clicked", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ trip: { chatSessionId: "input-bar-chat-id" } }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<Chat id="test-chat" initialMessages={[]} />);
+    const button = screen.getByRole("button", { name: "Start new chat" });
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/chat/input-bar-chat-id");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/trips",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("does not submit the message form when the input-bar button is clicked", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ trip: { chatSessionId: "no-submit-id" } }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<Chat id="test-chat" initialMessages={[]} />);
+    const input = screen.getByLabelText("Message") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "draft message" } });
+
+    const button = screen.getByRole("button", { name: "Start new chat" });
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/trips",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/chat",
+      expect.anything(),
+    );
+    expect(input.value).toBe("draft message");
+  });
+});
